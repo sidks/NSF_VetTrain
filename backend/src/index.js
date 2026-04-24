@@ -13,7 +13,8 @@ const express = require("express");
 const OpenAI =  require("openai");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const PORT = process.env.PORT || 3001
+// const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT;
 const app = express();
 app.use(cors());
 app.use(express.json());
