@@ -13,8 +13,7 @@ const express = require("express");
 const OpenAI =  require("openai");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// const PORT = process.env.PORT || 3001
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3001
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -47,7 +46,14 @@ app.post("/api", async (req, res) => {
           model = process.env.GEMINI_MODEL_NAME;
           
           completion = await callGemini(model, prompt, currentQuestion, currentAnswer);
-          match = completion.response.text().match(pattern);
+          // match = completion.response.text().match(pattern);
+          const text = completion.response.text();
+          match = text.match(pattern);
+
+          if (!match) {
+            throw new Error("No JSON found in Gemini response");
+          }
+
           responseJson = JSON.parse(match[0]);
         } else {
           prompt = process.env.MY_PROMPT_COMP_OVER;
@@ -59,7 +65,7 @@ app.post("/api", async (req, res) => {
           completion = await callGPT(model, prompt, currentQuestion, currentAnswer);
 
           const content = completion.choices[0].message.content;
-          const match = content.trim().match(pattern);
+          match = content.trim().match(pattern);
 
           if (!match) {
             throw new Error("No JSON found in GPT response");
@@ -68,7 +74,11 @@ app.post("/api", async (req, res) => {
         }
         
         // FIX: normalize + correct swapped fields
-        let { reason, ans } = responseJson;
+        let { reason, ans, military_jargon } = responseJson;
+
+        if (!Array.isArray(military_jargon)) {
+          military_jargon = [];
+        }
 
         const validAnswers = ["Over-explained", "Under-explained", "Succinct", "Comprehensive"];
 
@@ -100,7 +110,7 @@ app.post("/api", async (req, res) => {
         }
 
         // overwrite responseJson with corrected values
-        responseJson = { reason, ans };
+        responseJson = { reason, ans, military_jargon };
 
         // if (!validAnswers.includes(responseJson.ans)) {
         //   throw new Error("Invalid 'ans' value in the response");
@@ -161,7 +171,7 @@ app.listen(PORT, () => {
 
 const callGemini = (modelName, prompt, question, answer) => {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: modelName, systemInstructions: "You are a helpful assistant" });
+  const model = genAI.getGenerativeModel({ model: modelName, systemInstruction: "You are a helpful assistant" });
 
   const chat = model.startChat({
     history: [
@@ -175,7 +185,17 @@ const callGemini = (modelName, prompt, question, answer) => {
       },
     ]
   });
-  return chat.sendMessage(`\nInterviewer: ${question}\nVeteran: ${answer}\n\nThink about it step by step and give the reason and the final answer in a json format like {{"reason": "<reason>", "ans": "<answer>"}}.`);
+  return chat.sendMessage(`
+  Interviewer: ${question}
+  Veteran: ${answer}
+
+  Return output strictly in JSON format:
+  {
+    "reason": "<reason>",
+    "ans": "<answer>",
+    "military_jargon": ["<term1>", "<term2>"]
+  }
+  `);
 
   // const promptGem = `${prompt}\nInterviewer: ${question}\nVeteran: ${answer}\n\nThink about it step by step and give the reason and the final answer in a json format like {{"reason": "<reason>", "ans": "<answer>"}}.`;
   // return model.generateContent(promptGem);
