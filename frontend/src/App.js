@@ -37,7 +37,7 @@ function App() {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
   // API response
-  const [currentResponse, setCurrentResponse] = useState({ Label: '', Reasoning: '' });
+  const [currentResponse, setCurrentResponse] = useState({ Label: '', Reasoning: '', Jargon: [] });
   // const [currentCategory, setCurrentCategory] = useState('All Categories');
   const [error, setError] = useState("")
   // functions for the whisper api
@@ -202,7 +202,12 @@ function App() {
     const currentLabel = currentQuestions[currentQuestionIndex]?.Label || '';
     const currentReasoning = currentQuestions[currentQuestionIndex]?.Reasoning || '';
     setTextAreaValue(currentAnswer);
-    setCurrentResponse({Label: currentLabel, Reasoning: currentReasoning})
+    // setCurrentResponse({Label: currentLabel, Reasoning: currentReasoning})
+    setCurrentResponse(prev => ({
+      ...prev,
+      Label: currentLabel,
+      Reasoning: currentReasoning
+    }));
     setError("")
   }, [currentQuestionIndex, currentQuestions]);
 
@@ -232,11 +237,12 @@ function App() {
     const data = await response.json();
     console.log("response: ", data);
     // Extracting values
-    const { reason, ans } = data;
+    const { reason, ans, military_jargon } = data;
 
     const modelResponse = {
       Label: ans,
-      Reasoning: reason
+      Reasoning: reason,
+      Jargon: military_jargon || []
     };
 
     // Update the state with the API response
@@ -314,6 +320,7 @@ function App() {
           <div className="api-response">
             <div className="answer-api-response">Label: {currentResponse.Label}</div>
             <div className="answer-api-response">Reasoning: {currentResponse.Reasoning}</div>
+            <div className="answer-api-response">Military Jargon: {currentResponse.Jargon && currentResponse.Jargon.length > 0 ? currentResponse.Jargon.join(", ") : "None detected"}</div>
           </div>
         )}
         {
