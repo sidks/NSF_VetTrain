@@ -235,6 +235,7 @@ function App() {
       }),
     })
     const data = await response.json();
+    console.log("FULL RESPONSE FROM BACKEND:", data);
     console.log("response: ", data);
     // Extracting values
     const { reason, ans, military_jargon } = data;
